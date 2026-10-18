@@ -1,0 +1,98 @@
+name: Android ARM64 package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'HorizonAndroidPrep_0.9.7_with_native.zip.part-*'
+      - '.github/workflows/android-package.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Check archive parts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for part in \
+            HorizonAndroidPrep_0.9.7_with_native.zip.part-00 \
+            HorizonAndroidPrep_0.9.7_with_native.zip.part-01 \
+            HorizonAndroidPrep_0.9.7_with_native.zip.part-02; do
+            test -s "$part" || { echo "Missing upload: $part"; exit 2; }
+          done
+
+      - name: Reassemble and verify source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat \
+            HorizonAndroidPrep_0.9.7_with_native.zip.part-00 \
+            HorizonAndroidPrep_0.9.7_with_native.zip.part-01 \
+            HorizonAndroidPrep_0.9.7_with_native.zip.part-02 \
+            > HorizonAndroidPrep_0.9.7_with_native.zip
+          echo 'c3e8de14e3beacbff203f2134afabe3fb801bea8eda7de42491aacfe00a2b302  HorizonAndroidPrep_0.9.7_with_native.zip' | sha256sum -c -
+          unzip -tq HorizonAndroidPrep_0.9.7_with_native.zip
+          unzip -q HorizonAndroidPrep_0.9.7_with_native.zip
+          test -f HorizonAndroidPrep/app/build.gradle
+          test -s HorizonAndroidPrep/prebuilt/android/arm64-v8a/libhorizon_android.so
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK and NDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-35 build-tools;35.0.0 ndk;27.2.12479018'
+
+      - name: Validate Android ARM64 native library
+        working-directory: HorizonAndroidPrep
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
+          bash tools/validate-native-library.sh prebuilt/android/arm64-v8a/libhorizon_android.so
+
+      - name: Run static source tests
+        working-directory: HorizonAndroidPrep
+        shell: bash
+        run: bash tools/test-static-java.sh
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        working-directory: HorizonAndroidPrep
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:assembleDebug 2>&1 | tee apk-build.log
+
+      - name: Verify library is packaged inside APK
+        working-directory: HorizonAndroidPrep
+        shell: bash
+        run: bash tools/verify-apk-native.sh app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload APK and build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizon-android-prebuilt-debug
+          path: |
+            HorizonAndroidPrep/app/build/outputs/apk/debug/*.apk
+            HorizonAndroidPrep/apk-build.log
+          if-no-files-found: warn
+          retention-days: 14
