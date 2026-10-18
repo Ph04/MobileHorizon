@@ -34,8 +34,12 @@ jobs:
             echo "=== $f ==="
             sed -n '1,320p' "$f"
           done
+          echo '=== METHOD INDEX ==='
+          grep -nE 'buildUi|setStatus|startOfficialDownload|installInProgress|PICK_PREPARED_RESOURCE_TREE|onActivityResult|setContentView|requestPermissions' app/src/main/java/dev/horizon/androidprep/MainActivity.java || true
+          echo '=== REMAINING MAIN ACTIVITY ==='
+          sed -n '250,900p' app/src/main/java/dev/horizon/androidprep/MainActivity.java
           echo '=== RESOURCE UI XML ==='
-          find app/src/main/res/layout app/src/main/res/values -type f 2>/dev/null | sort | while read -r f; do
+          find app/src/main/res/values -type f 2>/dev/null | sort | while read -r f; do
             case "$f" in
               *.xml) echo "=== $f ==="; sed -n '1,220p' "$f";;
             esac
