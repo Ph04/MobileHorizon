@@ -8,6 +8,10 @@ on:
       - 'HorizonAndroidPrep_0.9.7_with_native.zip.part-*'
       - 'android-overlay/**'
       - 'tools/apply-android-overlay.py'
+      - 'tools/apply-resource-export-overlay.py'
+      - 'tools/prepare-horizon-resources-termux.sh'
+      - 'docs/TERMUX_RESOURCE_PREPARATION.md'
+      - 'README.md'
       - '.github/workflows/android-package.yml'
 
 permissions:
@@ -80,6 +84,17 @@ jobs:
           grep -q 'DownloadNotificationService' HorizonAndroidPrep/app/src/main/AndroidManifest.xml
           grep -q 'DownloadNotificationService.begin' HorizonAndroidPrep/app/src/main/java/dev/horizon/androidprep/MainActivity.java
           grep -q "versionName '0.9.8'" HorizonAndroidPrep/app/build.gradle
+
+      - name: Apply local resource-preparation bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/apply-resource-export-overlay.py
+          bash -n tools/prepare-horizon-resources-termux.sh
+          python3 tools/apply-resource-export-overlay.py HorizonAndroidPrep
+          grep -q 'EXPORT_PREPARATION_INPUT' HorizonAndroidPrep/app/src/main/java/dev/horizon/androidprep/MainActivity.java
+          grep -q 'Exportar arquivos para preparar recursos no Termux' HorizonAndroidPrep/app/src/main/java/dev/horizon/androidprep/MainActivity.java
+          grep -q "versionName '0.9.9'" HorizonAndroidPrep/app/build.gradle
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
