@@ -2,28 +2,29 @@
 
 Este repositório monta o APK Android experimental para o Horizon usando a biblioteca nativa ARM64 pré-compilada no pacote de origem.
 
-## Atualização 0.9.8 — downloads em segundo plano
+## Atualização 0.9.9 — downloads e exportação local para preparação de recursos
 
-- Os downloads oficiais do Minecraft Java 26.3 passam a usar um serviço Android em primeiro plano para continuarem enquanto o app fica minimizado.
-- A notificação mostra o estado do download e, quando o instalador informa os totais, uma barra/percentual de progresso.
-- Ao terminar, fica uma notificação de conclusão ou falha. Tocar nela abre o app.
-- Android 13 ou superior solicita permissão para mostrar notificações. Se ela for negada, o download ainda pode continuar, mas a notificação na gaveta pode ser ocultada pelo Android.
-- O instalador mantém a verificação de SHA-1 e tamanho dos arquivos oficiais; os arquivos são armazenados no espaço privado do aplicativo, não neste repositório.
+- Os downloads oficiais do Minecraft Java 26.3 continuam enquanto o app fica minimizado, com notificação de progresso e de conclusão.
+- A nova opção **“Exportar arquivos para preparar recursos no Termux”** grava um ZIP local com a cópia do usuário de `versions/`, `libraries/`, `assets/` e `server.jar`. O app não envia esses dados pela internet.
+- O preparador oficial `horizon-prepare` roda no próprio Android por meio do Termux, usando Rust 1.90+ e JDK 25 para compilar/executar os exportadores Java do jogo.
+- Depois da preparação, importe a pasta gerada, contendo `horizon-resources.json`, pelo botão **“Importar recursos Horizon já preparados”**. A tela valida schema, versão dos dados e arquivos essenciais.
 
-No app, a opção **Baixar Minecraft 26.3 + todos os assets** baixa o conjunto oficial completo listado para a versão. Isso pode usar centenas de MB; confira o espaço livre e prefira Wi-Fi.
+Consulte o fluxo completo em [docs/TERMUX_RESOURCE_PREPARATION.md](docs/TERMUX_RESOURCE_PREPARATION.md). O script [tools/prepare-horizon-resources-termux.sh](tools/prepare-horizon-resources-termux.sh) automatiza as etapas do Termux a partir do ZIP exportado pelo app.
+
+A opção **“Baixar Minecraft 26.3 + todos os assets”** pode usar centenas de MB. A exportação e a árvore preparada exigem espaço adicional, então confira o armazenamento livre antes de começar. Em telefones com 4 GB de RAM, mantenha o Termux em primeiro plano, feche outros apps pesados e use Wi-Fi. O processo pode falhar por limite de memória do Android; isso não significa automaticamente que os arquivos de entrada estejam corrompidos.
+
+## Privacidade dos arquivos do jogo
+
+Os assets do Minecraft e os recursos preparados são derivados do jogo e devem permanecer locais. Não faça commit, release, upload ou compartilhamento do ZIP exportado nem da pasta `.local/horizon-client/26.3`. Somente o código original do app e os scripts de preparação são versionados aqui.
 
 ## O que ainda falta para jogar
 
-O teste Vulkan valida a Activity nativa e o renderer, mas não prova que o cliente carregue. O APK continua usando uma biblioteca Rust pré-compilada — este workflow não recompila o motor.
+O APK ainda usa uma biblioteca Rust pré-compilada — este workflow não recompila o motor. A compilação valida o app Android e o empacotamento da biblioteca nativa, mas não prova que Horizon abra um mundo no aparelho.
 
-Também falta executar/integrar o preparador oficial de recursos do Horizon. Os arquivos oficiais baixados são as entradas dessa etapa, não os recursos preparados: o diretório final deve conter `horizon-resources.json`, os dados de jogo/worldgen e os demais arquivos exigidos pelo cliente. O preparador atual depende de Rust, Python e JDK 25/exportadores Java; essa preparação ainda não está portada para o Android.
-
-Até lá, use **Importar recursos Horizon já preparados** para escolher no seletor de pastas a saída local válida `.local/horizon-client/26.3` de uma preparação feita no ambiente adequado. A tela de validação informa os arquivos ausentes e não considera um download simples como equivalente aos recursos preparados.
-
-O projeto Horizon pede que a preparação seja feita a partir da cópia própria do Minecraft Java Edition 26.3. Não distribuímos neste repositório os assets nem os recursos derivados do jogo.
+O fluxo 0.9.9 automatiza a **exportação e a preparação dos recursos via Termux**; o primeiro uso da preparação ainda precisa ser executado no telefone. Depois de importar uma pasta de recursos completa, o próximo passo é testar a inicialização do cliente no Galaxy A15. Não declare a jogabilidade confirmada até esse teste real.
 
 ## Compilar o APK
 
-Abra **Actions → Android ARM64 package** no GitHub. O workflow remonta o pacote de origem, aplica o overlay Android de notificações, verifica a biblioteca nativa, executa os testes estáticos e constrói um APK debug. O artefato se chama `horizon-android-prebuilt-debug`.
+Abra **Actions → Android ARM64 package** no GitHub. O workflow remonta o pacote de origem, aplica as atualizações de notificações e exportação local, valida a biblioteca nativa e constrói um APK debug. O artefato se chama `horizon-android-prebuilt-debug`.
 
-Um workflow bem-sucedido verifica compilação e empacotamento — não substitui o teste no aparelho, nem comprova entrada em mundo ou desempenho jogável.
+Um workflow bem-sucedido comprova compilação e empacotamento, não a inicialização do jogo ou o desempenho jogável.
