@@ -96,6 +96,17 @@ jobs:
           grep -q 'Exportar arquivos para preparar recursos no Termux' HorizonAndroidPrep/app/src/main/java/dev/horizon/androidprep/MainActivity.java
           grep -q "versionName '0.9.9'" HorizonAndroidPrep/app/build.gradle
 
+      - name: Upload prepared source snapshot for development
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizon-source-snapshot
+          path: |
+            HorizonAndroidPrep/app/src/main/java/dev/horizon/androidprep/MainActivity.java
+            HorizonAndroidPrep/app/src/main/AndroidManifest.xml
+            HorizonAndroidPrep/app/build.gradle
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
