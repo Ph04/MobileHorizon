@@ -1,0 +1,85 @@
+name: Export source code 0.9.9
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - '.github/workflows/export-source-0.9.9.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-archive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Reassemble and verify the original source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat \
+            HorizonAndroidPrep_0.9.7_with_native.zip.part-00 \
+            HorizonAndroidPrep_0.9.7_with_native.zip.part-01 \
+            HorizonAndroidPrep_0.9.7_with_native.zip.part-02 \
+            > /tmp/HorizonAndroidPrep_0.9.7_with_native.zip
+          echo 'c3e8de14e3beacbff203f2134afabe3fb801bea8eda7de42491aacfe00a2b302  /tmp/HorizonAndroidPrep_0.9.7_with_native.zip' | sha256sum -c -
+          unzip -tq /tmp/HorizonAndroidPrep_0.9.7_with_native.zip
+          mkdir -p /tmp/source-build
+          unzip -q /tmp/HorizonAndroidPrep_0.9.7_with_native.zip -d /tmp/source-build
+
+      - name: Run baseline source tests
+        working-directory: /tmp/source-build/HorizonAndroidPrep
+        shell: bash
+        run: bash tools/test-static-java.sh
+
+      - name: Recreate exact 0.9.9 source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/apply-android-overlay.py tools/apply-resource-export-overlay.py
+          python3 tools/apply-android-overlay.py /tmp/source-build/HorizonAndroidPrep
+          python3 tools/apply-resource-export-overlay.py /tmp/source-build/HorizonAndroidPrep
+          grep -q "versionName '0.9.9'" /tmp/source-build/HorizonAndroidPrep/app/build.gradle
+          grep -q 'Exportar arquivos para preparar recursos no Termux' /tmp/source-build/HorizonAndroidPrep/app/src/main/java/dev/horizon/androidprep/MainActivity.java
+          grep -q 'DownloadNotificationService' /tmp/source-build/HorizonAndroidPrep/app/src/main/AndroidManifest.xml
+          bash -n tools/prepare-horizon-resources-termux.sh
+          mkdir -p MobileHorizon-0.9.9-source
+          mv /tmp/source-build/HorizonAndroidPrep MobileHorizon-0.9.9-source/HorizonAndroidPrep
+          mkdir -p MobileHorizon-0.9.9-source/source-tools MobileHorizon-0.9.9-source/docs MobileHorizon-0.9.9-source/android-overlay
+          cp tools/apply-android-overlay.py tools/apply-resource-export-overlay.py tools/prepare-horizon-resources-termux.sh MobileHorizon-0.9.9-source/source-tools/
+          cp docs/TERMUX_RESOURCE_PREPARATION.md MobileHorizon-0.9.9-source/docs/
+          cp android-overlay/DownloadNotificationService.java MobileHorizon-0.9.9-source/android-overlay/
+          cp .github/workflows/android-package.yml MobileHorizon-0.9.9-source/source-tools/
+          cat > MobileHorizon-0.9.9-source/README.md <<'EOF'
+          # MobileHorizon Android 0.9.9 — Source Code
+
+          This archive contains the expanded Android application source reconstructed from the original 0.9.7 source bundle, plus exactly the two overlays used to generate 0.9.9: background download notifications and the local Termux resource-preparation export bridge.
+
+          ## Build
+          The Android app is in the HorizonAndroidPrep directory. A reproducible CI workflow is included at source-tools/android-package.yml (copy it to .github/workflows/android-package.yml in a working repository). It uses JDK 17 for Gradle and Android SDK/NDK, and reuses the precompiled ARM64 libhorizon_android.so.
+
+          ## Resource preparation
+          The APK download/import/export UI is source code; the helper for running the official preparer in Termux is in source-tools/prepare-horizon-resources-termux.sh. Read docs/TERMUX_RESOURCE_PREPARATION.md.
+
+          ## Limitations
+          This is the experimental 0.9.9 source, not the later 1.0.0 tree. Successful Android compilation and the Vulkan smoke test do not prove full Minecraft gameplay. The native Horizon library in this version is a precompiled binary. Minecraft JARs, assets and generated Horizon resource trees are not included; keep those on the user's device.
+          EOF
+          sha256sum MobileHorizon-0.9.9-source/HorizonAndroidPrep/prebuilt/android/arm64-v8a/libhorizon_android.so > MobileHorizon-0.9.9-source/native-library.sha256
+          zip -qr -1 MobileHorizon-0.9.9-source.zip MobileHorizon-0.9.9-source
+          sha256sum MobileHorizon-0.9.9-source.zip | tee MobileHorizon-0.9.9-source.zip.sha256
+          unzip -tq MobileHorizon-0.9.9-source.zip
+          ls -lh MobileHorizon-0.9.9-source.zip
+
+      - name: Upload exact 0.9.9 source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: MobileHorizon-0.9.9-source
+          path: |
+            MobileHorizon-0.9.9-source.zip
+            MobileHorizon-0.9.9-source.zip.sha256
+          retention-days: 30
