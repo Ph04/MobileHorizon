@@ -119,6 +119,25 @@ replace_once(
     }'''
 )
 
+replace_once(
+    activity,
+    'text("Preparador Android · versão 0.9.7", 15, Color.rgb(159, 177, 210), false)',
+    'text("Downloads em segundo plano · versão 0.9.8", 15, Color.rgb(159, 177, 210), false)'
+)
+
+replace_once(
+    activity,
+    '''        TextView warning = text(
+                "A opção 1 baixa o manifesto e os arquivos oficiais de Minecraft 26.3, sem precisar " +
+                "copiar arquivos de um PC. A opção 2 também baixa o catálogo completo de assets, " +
+                "o que pode ocupar centenas de MB. Os arquivos são guardados no armazenamento privado do app.", 14, Color.rgb(205, 211, 226), false);''',
+    '''        TextView warning = text(
+                "A opção 1 baixa o manifesto e os arquivos oficiais de Minecraft 26.3, sem precisar " +
+                "copiar arquivos de um PC. Os downloads podem continuar em segundo plano com notificação de progresso e conclusão. " +
+                "A opção 2 também baixa o catálogo completo de assets, que pode ocupar centenas de MB. " +
+                "Os recursos preparados do Horizon ainda precisam ser importados separadamente.", 14, Color.rgb(205, 211, 226), false);'''
+)
+
 replace_once(gradle, "    versionCode 15\n", "    versionCode 16\n")
 replace_once(gradle, "    versionName '0.9.7'\n", "    versionName '0.9.8'\n")
 
