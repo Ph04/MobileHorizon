@@ -54,7 +54,9 @@ jobs:
           cp tools/apply-android-overlay.py tools/apply-resource-export-overlay.py tools/prepare-horizon-resources-termux.sh MobileHorizon-0.9.9-source/source-tools/
           cp docs/TERMUX_RESOURCE_PREPARATION.md MobileHorizon-0.9.9-source/docs/
           cp android-overlay/DownloadNotificationService.java MobileHorizon-0.9.9-source/android-overlay/
-          cp .github/workflows/android-package.yml MobileHorizon-0.9.9-source/source-tools/
+          # Keep the matching 0.9.9 build workflow, not the later 1.0.0 workflow on main.
+          git fetch --depth 1 origin a74b6b0a9252ad156f548e29a8049b3fa032608e
+          git show a74b6b0a9252ad156f548e29a8049b3fa032608e:.github/workflows/android-package.yml > MobileHorizon-0.9.9-source/source-tools/android-package-0.9.9.yml
           cat > MobileHorizon-0.9.9-source/README.md <<'EOF'
           # MobileHorizon Android 0.9.9 — Source Code
 
