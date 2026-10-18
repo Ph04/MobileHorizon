@@ -143,11 +143,6 @@ NEW_UI = r"""
 replace_method("    private void buildUi() {", "    private TextView text(", NEW_UI, "compact main UI")
 
 replace_once(
-    'text("Downloads em segundo plano · versão 0.9.9 · recursos via Termux", 15, Color.rgb(159, 177, 210), false)',
-    'text("Minecraft Java 26.3 · Preparador Android 1.0.0", 14, Color.rgb(157, 178, 216), false)',
-    "legacy subtitle safeguard")
-
-replace_once(
     '    private Button addButton(LinearLayout parent, String label, View.OnClickListener click) {\n        Button button = new Button(this);\n        button.setText(label);\n        button.setAllCaps(false);\n        button.setTextSize(15);\n',
     '    private Button addButton(LinearLayout parent, String label, View.OnClickListener click) {\n        Button button = new Button(this);\n        button.setText(label);\n        button.setAllCaps(false);\n        button.setTextSize(14);\n        button.setTextColor(Color.WHITE);\n        button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(40, 57, 91)));\n        button.setPadding(dp(12), dp(8), dp(12), dp(8));\n',
     "style buttons")
