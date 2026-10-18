@@ -10,7 +10,10 @@ on:
       - 'tools/apply-android-overlay.py'
       - 'tools/apply-resource-export-overlay.py'
       - 'tools/prepare-horizon-resources-termux.sh'
+      - 'tools/apply-v1.0-overlay.py'
+      - 'android-overlay/nativeprep/**'
       - 'docs/TERMUX_RESOURCE_PREPARATION.md'
+      - 'docs/NATIVE_PREPARER_PLAN.md'
       - 'README.md'
       - '.github/workflows/android-package.yml'
 
@@ -96,16 +99,33 @@ jobs:
           grep -q 'Exportar arquivos para preparar recursos no Termux' HorizonAndroidPrep/app/src/main/java/dev/horizon/androidprep/MainActivity.java
           grep -q "versionName '0.9.9'" HorizonAndroidPrep/app/build.gradle
 
-      - name: Upload prepared source snapshot for development
-        uses: actions/upload-artifact@v4
-        with:
-          name: horizon-source-snapshot
-          path: |
-            HorizonAndroidPrep/app/src/main/java/dev/horizon/androidprep/MainActivity.java
-            HorizonAndroidPrep/app/src/main/AndroidManifest.xml
-            HorizonAndroidPrep/app/build.gradle
-          if-no-files-found: error
-          retention-days: 3
+      - name: Apply compact UI, import progress and native preflight bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/apply-v1.0-overlay.py
+          python3 tools/apply-v1.0-overlay.py HorizonAndroidPrep
+          grep -q 'copyPreparedStream' HorizonAndroidPrep/app/src/main/java/dev/horizon/androidprep/MainActivity.java
+          grep -q 'nativePreparationSummary' HorizonAndroidPrep/app/src/main/java/dev/horizon/androidprep/MainActivity.java
+          grep -q "versionName '1.0.0'" HorizonAndroidPrep/app/build.gradle
+          test -s HorizonAndroidPrep/app/src/main/java/dev/horizon/androidprep/NativePreparationBridge.java
+
+      - name: Build ARM64 native preparation preflight bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          NDK="$ANDROID_HOME/ndk/27.2.12479018"
+          CXX="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang++"
+          LLVM_READelf="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+          LLVM_NM="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
+          OUT="HorizonAndroidPrep/prebuilt/android/arm64-v8a/libhorizon_prepare_bridge.so"
+          test -x "$CXX"
+          mkdir -p "$(dirname "$OUT")"
+          "$CXX" -std=c++17 -O2 -fPIC -shared -Wl,-soname,libhorizon_prepare_bridge.so \
+            android-overlay/nativeprep/horizon_prepare_bridge.cpp -o "$OUT"
+          "$LLVM_READelf" -h "$OUT" | grep -q 'AArch64'
+          "$LLVM_NM" -D --defined-only "$OUT" | grep -q 'Java_dev_horizon_androidprep_NativePreparationBridge_nativeInspectMinecraftRoot'
+          test -s "$OUT"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -122,7 +142,11 @@ jobs:
       - name: Verify library is packaged inside APK
         working-directory: HorizonAndroidPrep
         shell: bash
-        run: bash tools/verify-apk-native.sh app/build/outputs/apk/debug/app-debug.apk
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          bash tools/verify-apk-native.sh "$APK"
+          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libhorizon_prepare_bridge.so'
 
       - name: Upload APK and build log
         if: always()
